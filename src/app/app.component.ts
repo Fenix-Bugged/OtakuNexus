@@ -4,11 +4,12 @@ import { RouterOutlet } from '@angular/router';
 import { AnimeService } from './core/services/anime.service';
 import { AppRoute } from './core/models/route.model';
 import { NavbarComponent } from './shared/components/navbar/navbar.component';
+import { NotFoundComponent } from './features/not-found/not-found.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, NavbarComponent],
+  imports: [RouterOutlet, NavbarComponent, NotFoundComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })

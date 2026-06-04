@@ -64,6 +64,9 @@
           <button class="primary-btn" (click)="navigateTo('home')">Explorar Series</button>
         </div>
       </section>
+    } @else {
+      <!-- Fallback / Wildcard for any other non-existent virtual route -->
+      <app-not-found (goHome)="navigateTo('home')"></app-not-found>
     }
   </div>
 </main>
