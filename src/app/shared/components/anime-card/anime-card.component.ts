@@ -1,0 +1,91 @@
+import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Anime } from '../../../core/models/anime.model';
+
+@Component({
+  selector: 'app-anime-card',
+  standalone: true,
+  imports: [CommonModule],
+  template: `
+    <article
+      class="relative group rounded-2xl overflow-hidden cursor-pointer bg-nexus-800 border border-white/5
+             transition-all duration-300 ease-out hover:scale-[1.03] hover:shadow-2xl hover:shadow-black/60
+             hover:border-white/10 animate-fade-in"
+      [style.view-transition-name]="'anime-poster-' + anime.mal_id"
+      (click)="onCardClick()"
+      [attr.aria-label]="'Ver detalles de ' + anime.title"
+    >
+      <!-- Poster image (2:3 aspect ratio) -->
+      <div class="relative w-full" style="aspect-ratio: 2/3;">
+        <img
+          [src]="anime.images.jpg.large_image_url || anime.images.jpg.image_url"
+          [alt]="anime.title"
+          class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.06]"
+          loading="lazy"
+        />
+        <!-- Dark gradient overlay for bottom readability -->
+        <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+        <!-- Favorite button — top right -->
+        <button
+          (click)="onFavoriteClick($event)"
+          [attr.aria-label]="isFav ? 'Quitar de favoritos' : 'Añadir a favoritos'"
+          class="absolute top-2.5 right-2.5 p-2 rounded-full backdrop-blur-sm transition-all duration-200
+                 z-10 border border-white/10"
+          [ngClass]="isFav ? 'bg-red-500 hover:bg-red-400' : 'bg-black/50 hover:bg-red-600'"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            height="18px"
+            viewBox="0 -960 960 960"
+            width="18px"
+            class="transition-transform duration-200"
+            [ngClass]="{'animate-pulse-heart': isFav}"
+            [attr.fill]="isFav ? '#fff' : 'rgba(255,255,255,0.7)'"
+          >
+            <path d="m480-120-58-52q-101-91-167-157T150-447.5Q111-500 95.5-544T80-634q0-94 63-157t157-63q52 0 99 22t81 62q34-40 81-62t99-22q94 0 157 63t63 157q0 46-15.5 90T810-447.5Q771-395 705-329T538-172l-58 52Z"/>
+          </svg>
+        </button>
+
+        <!-- Score badge — bottom left -->
+        @if (anime.score) {
+          <div class="absolute bottom-2.5 left-2.5 flex items-center gap-1 px-2 py-1 rounded-lg
+                      bg-black/70 backdrop-blur-sm border border-white/10 z-10">
+            <span class="text-yellow-400 text-xs">⭐</span>
+            <span class="text-white text-xs font-bold font-outfit">{{ anime.score.toFixed(1) }}</span>
+          </div>
+        }
+      </div>
+
+      <!-- Title at bottom -->
+      <div class="px-3 py-2.5">
+        <h3 class="text-white text-sm font-semibold font-outfit leading-tight line-clamp-2">
+          {{ anime.title }}
+        </h3>
+        <div class="flex items-center gap-2 mt-1">
+          @if (anime.type) {
+            <span class="text-white/40 text-xs">{{ anime.type }}</span>
+          }
+          @if (anime.episodes) {
+            <span class="text-white/30 text-xs">· {{ anime.episodes }} eps</span>
+          }
+        </div>
+      </div>
+    </article>
+  `,
+})
+export class AnimeCardComponent {
+  @Input({ required: true }) anime!: Anime;
+  @Input() isFav = false;
+  @Output() cardClicked = new EventEmitter<number>();
+  @Output() favoriteToggled = new EventEmitter<Anime>();
+
+  onCardClick(): void {
+    this.cardClicked.emit(this.anime.mal_id);
+  }
+
+  onFavoriteClick(event: MouseEvent): void {
+    event.stopPropagation();
+    this.favoriteToggled.emit(this.anime);
+  }
+}

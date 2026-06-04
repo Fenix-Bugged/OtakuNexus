@@ -5,11 +5,12 @@ import { AnimeService } from './core/services/anime.service';
 import { AppRoute } from './core/models/route.model';
 import { NavbarComponent } from './shared/components/navbar/navbar.component';
 import { NotFoundComponent } from './features/not-found/not-found.component';
+import { HomeComponent } from './features/home/home.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, NavbarComponent, NotFoundComponent],
+  imports: [RouterOutlet, NavbarComponent, NotFoundComponent, HomeComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
@@ -53,5 +54,15 @@ export class AppComponent implements OnInit {
    */
   onNavigate(route: AppRoute): void {
     this.navigateTo(route.path, route.paramId);
+  }
+
+  /**
+   * Handles favorite toggle from child screens and increments/decrements the badge counter.
+   */
+  onFavoriteToggled(anime: { mal_id: number }): void {
+    // We delegate the actual tracking to each screen; this just syncs the navbar badge
+    // For now, toggle logic increments count (full state management comes in a future day)
+    const current = this.favoritesCount();
+    this.favoritesCount.set(current > 0 ? current - 1 : current + 1);
   }
 }
