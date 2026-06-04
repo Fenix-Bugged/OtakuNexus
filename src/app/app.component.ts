@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, signal, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser, Location } from '@angular/common';
-import { RouterOutlet } from '@angular/router';
+import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
+import { filter } from 'rxjs';
 import { AnimeService } from './core/services/anime.service';
 import { AppRoute } from './core/models/route.model';
 import { NavbarComponent } from './shared/components/navbar/navbar.component';
@@ -19,18 +20,18 @@ export class AppComponent implements OnInit {
   private animeService = inject(AnimeService);
   private platformId = inject(PLATFORM_ID);
   private location = inject(Location);
+  private router = inject(Router);
 
   // Virtual routing signals
   currentRoute = signal<AppRoute>({ path: 'home' });
   favoritesCount = signal<number>(0);
 
   ngOnInit(): void {
-    // Sync initial route from browser URL
-    this.syncRouteFromUrl(this.location.path());
-
-    // Listen to URL changes (e.g. browser back/forward buttons)
-    this.location.onUrlChange((url) => {
-      this.syncRouteFromUrl(url);
+    // Listen to router navigation events to synchronize the virtual router
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd)
+    ).subscribe((event) => {
+      this.syncRouteFromUrl(event.urlAfterRedirects);
     });
 
     // Basic connectivity check log
@@ -71,6 +72,7 @@ export class AppComponent implements OnInit {
    * Updates the virtual route reactively and scrolls to top if in browser.
    */
   navigateTo(path: AppRoute['path'], paramId?: number): void {
+    // Update the signal directly for instant reaction
     this.currentRoute.set({ path, paramId });
 
     // Update URL path in browser address bar
@@ -83,7 +85,7 @@ export class AppComponent implements OnInit {
 
     // Keep the wrong URL in the address bar if it's not-found (standard 404 behavior)
     if (path !== 'not-found') {
-      this.location.go(targetUrl);
+      this.router.navigateByUrl(targetUrl);
     }
 
     if (isPlatformBrowser(this.platformId)) {
