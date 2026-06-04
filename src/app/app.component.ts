@@ -1,5 +1,5 @@
 import { Component, OnInit, inject, signal, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, Location } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { AnimeService } from './core/services/anime.service';
 import { AppRoute } from './core/models/route.model';
@@ -18,12 +18,21 @@ export class AppComponent implements OnInit {
   title = 'OtakuNexus';
   private animeService = inject(AnimeService);
   private platformId = inject(PLATFORM_ID);
+  private location = inject(Location);
 
   // Virtual routing signals
   currentRoute = signal<AppRoute>({ path: 'home' });
   favoritesCount = signal<number>(0);
 
   ngOnInit(): void {
+    // Sync initial route from browser URL
+    this.syncRouteFromUrl(this.location.path());
+
+    // Listen to URL changes (e.g. browser back/forward buttons)
+    this.location.onUrlChange((url) => {
+      this.syncRouteFromUrl(url);
+    });
+
     // Basic connectivity check log
     this.animeService.getTopAnime().subscribe({
       next: (animes) => {
@@ -36,10 +45,46 @@ export class AppComponent implements OnInit {
   }
 
   /**
+   * Synchronizes the virtual route from the given URL path.
+   */
+  private syncRouteFromUrl(url: string): void {
+    // Clean URL path (e.g. "/details/123" -> "details/123", "/" -> "")
+    const path = url.split('?')[0].split('#')[0].replace(/^\/+/g, '');
+
+    if (path === '' || path === 'home') {
+      this.currentRoute.set({ path: 'home' });
+    } else if (path === 'search') {
+      this.currentRoute.set({ path: 'search' });
+    } else if (path === 'favorites') {
+      this.currentRoute.set({ path: 'favorites' });
+    } else if (path.startsWith('details')) {
+      const segments = path.split('/');
+      const id = segments[1] ? parseInt(segments[1], 10) : undefined;
+      this.currentRoute.set({ path: 'details', paramId: id });
+    } else {
+      // Non-existent route triggers the 404 page
+      this.currentRoute.set({ path: 'not-found' });
+    }
+  }
+
+  /**
    * Updates the virtual route reactively and scrolls to top if in browser.
    */
-  navigateTo(path: 'home' | 'search' | 'details' | 'favorites', paramId?: number): void {
+  navigateTo(path: AppRoute['path'], paramId?: number): void {
     this.currentRoute.set({ path, paramId });
+
+    // Update URL path in browser address bar
+    let targetUrl = `/${path}`;
+    if (path === 'home') {
+      targetUrl = '/';
+    } else if (path === 'details' && paramId !== undefined) {
+      targetUrl = `/details/${paramId}`;
+    }
+
+    // Keep the wrong URL in the address bar if it's not-found (standard 404 behavior)
+    if (path !== 'not-found') {
+      this.location.go(targetUrl);
+    }
 
     if (isPlatformBrowser(this.platformId)) {
       window.scrollTo({
