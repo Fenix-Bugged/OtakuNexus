@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { map, tap } from 'rxjs/operators';
+import { map, tap, catchError } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { Anime, AnimeResponse, AnimeDetailResponse, Character, CharacterResponse } from '../models/anime.model';
 
@@ -70,6 +70,20 @@ export class AnimeService {
   searchAnime(query: string): Observable<Anime[]> {
     return this.http.get<AnimeResponse>(`${this.baseUrl}/anime?q=${encodeURIComponent(query)}&limit=24`).pipe(
       map(res => res.data || [])
+    );
+  }
+
+  /**
+   * Obtiene una lista paginada de animes populares para el catálogo infinito.
+   * @param page Número de página a consultar
+   */
+  getPopularAnimePaged(page: number = 1): Observable<Anime[]> {
+    return this.http.get<AnimeResponse>(`${this.baseUrl}/top/anime?page=${page}&limit=24`).pipe(
+      map(res => res.data || []),
+      catchError(err => {
+        console.error(`Error cargando catálogo en página ${page}:`, err);
+        return of([]);
+      })
     );
   }
 

@@ -1,5 +1,16 @@
-import { Component, OnInit, inject, signal, Output, EventEmitter } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { 
+  Component, 
+  OnInit, 
+  inject, 
+  signal, 
+  Output, 
+  EventEmitter, 
+  AfterViewInit, 
+  ElementRef, 
+  ViewChild, 
+  PLATFORM_ID 
+} from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { AnimeService } from '../../core/services/anime.service';
 import { Anime } from '../../core/models/anime.model';
 import { AnimeCardComponent } from '../../shared/components/anime-card/anime-card.component';
@@ -9,20 +20,30 @@ import { AnimeCardComponent } from '../../shared/components/anime-card/anime-car
   standalone: true,
   imports: [CommonModule, AnimeCardComponent],
   templateUrl: './home.component.html',
+  styleUrl: './home.component.css'
 })
-export class HomeComponent implements OnInit {
+export class HomeComponent implements OnInit, AfterViewInit {
   private animeService = inject(AnimeService);
+  private platformId = inject(PLATFORM_ID);
 
   @Output() navigateTo = new EventEmitter<{ path: 'home' | 'search' | 'details' | 'favorites'; paramId?: number }>();
   @Output() favoriteToggled = new EventEmitter<Anime>();
 
-  // Data signals
+  // Data signals for existing home sections
   topAnime = signal<Anime[]>([]);
   seasonalAnime = signal<Anime[]>([]);
 
-  // Loading states
+  // Signals for infinite scroll catalog
+  catalogAnime = signal<Anime[]>([]);
+  currentPage = signal<number>(1);
+  isFetchingNextPage = signal<boolean>(false);
+
+  // Loading states for existing home sections
   loadingTop = signal(true);
   loadingSeasonal = signal(true);
+
+  // IntersectionObserver anchor
+  @ViewChild('infiniteAnchor') infiniteAnchor!: ElementRef;
 
   // Computed hero: the highest-scored anime from topAnime
   get heroAnime(): Anime | null {
@@ -33,10 +54,14 @@ export class HomeComponent implements OnInit {
     , list[0]);
   }
 
-  // Favorite IDs set (local in this component; lifted up via output in production)
+  // Favorite IDs set
   favIds = signal<Set<number>>(new Set());
 
+  // Skeleton placeholder array
+  skeletons = Array(12).fill(0);
+
   ngOnInit(): void {
+    // Load top anime and seasonal anime
     this.animeService.getTopAnime().subscribe({
       next: (data) => {
         this.topAnime.set(data);
@@ -51,6 +76,51 @@ export class HomeComponent implements OnInit {
         this.loadingSeasonal.set(false);
       },
       error: () => this.loadingSeasonal.set(false),
+    });
+
+    // Load initial page of infinite scroll catalogue
+    this.loadMoreAnime();
+  }
+
+  ngAfterViewInit(): void {
+    // SSR safety check: only run IntersectionObserver on the client-side
+    if (isPlatformBrowser(this.platformId)) {
+      this.initInfiniteScroll();
+    }
+  }
+
+  private initInfiniteScroll(): void {
+    const observer = new IntersectionObserver((entries) => {
+      // If anchor is in viewport and we are not fetching already
+      if (entries[0].isIntersecting && !this.isFetchingNextPage()) {
+        this.loadMoreAnime();
+      }
+    }, {
+      rootMargin: '200px' // Fetch 200px before reaching bottom
+    });
+
+    if (this.infiniteAnchor) {
+      observer.observe(this.infiniteAnchor.nativeElement);
+    }
+  }
+
+  loadMoreAnime(): void {
+    this.isFetchingNextPage.set(true);
+
+    this.animeService.getPopularAnimePaged(this.currentPage()).subscribe({
+      next: (data) => {
+        if (data.length > 0) {
+          // Immutability: Concat previous results with new ones using spread operator
+          this.catalogAnime.set([...this.catalogAnime(), ...data]);
+          // Advance to next page reactively
+          this.currentPage.update(p => p + 1);
+        }
+        this.isFetchingNextPage.set(false);
+      },
+      error: (err) => {
+        console.error('Error loading catalogue page:', err);
+        this.isFetchingNextPage.set(false);
+      }
     });
   }
 
@@ -72,7 +142,4 @@ export class HomeComponent implements OnInit {
   isFav(id: number): boolean {
     return this.favIds().has(id);
   }
-
-  // Skeleton placeholder array
-  skeletons = Array(12).fill(0);
 }
