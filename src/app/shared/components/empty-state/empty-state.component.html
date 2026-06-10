@@ -1,0 +1,26 @@
+<div class="empty-state-card flex flex-col items-center justify-center text-center p-8 md:p-12 rounded-3xl bg-white/[0.02] border border-white/[0.05] backdrop-blur-xl max-w-md mx-auto my-8 animate-fade-in">
+  <div class="empty-icon-wrapper mb-6 relative">
+    <div class="absolute inset-0 bg-gradient-to-tr from-orange-500 to-purple-600 rounded-full blur-2xl opacity-20 animate-pulse"></div>
+    <span class="relative text-6xl md:text-7xl block select-none" role="img" [attr.aria-label]="title">
+      {{ icon }}
+    </span>
+  </div>
+  <h3 class="text-white text-xl md:text-2xl font-bold font-outfit mb-3 tracking-tight">
+    {{ title }}
+  </h3>
+  @if (message) {
+    <p class="text-white/60 text-sm md:text-base leading-relaxed mb-6 font-inter">
+      {{ message }}
+    </p>
+  }
+  @if (actionLabel) {
+    <button
+      (click)="actionClicked.emit()"
+      class="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300
+             bg-gradient-to-r from-orange-500 to-purple-600 hover:from-orange-600 hover:to-purple-700
+             text-white hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-purple-900/20"
+    >
+      {{ actionLabel }}
+    </button>
+  }
+</div>

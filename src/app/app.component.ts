@@ -7,11 +7,12 @@ import { AppRoute } from './core/models/route.model';
 import { NavbarComponent } from './shared/components/navbar/navbar.component';
 import { NotFoundComponent } from './features/not-found/not-found.component';
 import { HomeComponent } from './features/home/home.component';
+import { SearchComponent } from './features/search/search.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, NavbarComponent, NotFoundComponent, HomeComponent],
+  imports: [RouterOutlet, NavbarComponent, NotFoundComponent, HomeComponent, SearchComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })

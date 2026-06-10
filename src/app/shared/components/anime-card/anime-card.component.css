@@ -1,0 +1,14 @@
+/* Anime Card Component Styles */
+
+.animate-pulse-heart {
+  animation: pulse-heart 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes pulse-heart {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.18);
+  }
+}

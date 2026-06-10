@@ -1,0 +1,35 @@
+/* ANIMACIONES PERSONALIZADAS PREMIUM (Aceleradas por GPU) */
+
+@keyframes portalFloatSpin {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+  50% {
+    transform: translateY(-12px) rotate(180deg) scale(1.05);
+  }
+  100% {
+    transform: translateY(0) rotate(360deg) scale(1);
+  }
+}
+
+@keyframes pulseSlow {
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+
+.animate-portal-float-spin {
+  animation: portalFloatSpin 8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: transform;
+}
+
+.animate-pulse-slow {
+  animation: pulseSlow 5s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  animation: shimmer 1.5s ease-out infinite;
+}

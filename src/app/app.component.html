@@ -12,16 +12,10 @@
         (favoriteToggled)="onFavoriteToggled($event)">
       </app-home>
     } @else if (currentRoute().path === 'search') {
-      <section class="page-section fade-in">
-        <div class="page-header">
-          <h1 class="page-title">Explorar & <span class="gradient-text">Buscar</span></h1>
-          <p class="page-subtitle">Encuentra tus títulos favoritos entre miles de producciones.</p>
-        </div>
-        <div class="search-box-placeholder">
-          <input type="text" placeholder="Escribe el nombre de un anime..." class="search-input" disabled />
-          <button class="search-button">Buscar</button>
-        </div>
-      </section>
+      <app-search
+        (navigateTo)="onNavigate($event)"
+        (favoriteToggled)="onFavoriteToggled($event)">
+      </app-search>
     } @else if (currentRoute().path === 'details') {
       <section class="page-section fade-in">
         <div class="back-nav" (click)="navigateTo('home')">
