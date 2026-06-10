@@ -1,79 +1,113 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, inject, signal, PLATFORM_ID } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of, throwError, timer } from 'rxjs';
-import { map, tap, catchError, retryWhen, mergeMap, take } from 'rxjs/operators';
+import { map, tap, catchError, retry, switchMap } from 'rxjs/operators';
+import { isPlatformBrowser } from '@angular/common';
 import { environment } from '../../../environments/environment';
 import { Anime, AnimeResponse, AnimeDetailResponse, Character, CharacterResponse } from '../models/anime.model';
+
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 @Injectable({
   providedIn: 'root'
 })
 export class AnimeService {
   private http = inject(HttpClient);
+  private platformId = inject(PLATFORM_ID);
   private baseUrl = environment.baseUrl;
 
-  // Cache using Angular Signals to avoid flickering and redundant requests
-  private topAnimeCache = signal<Anime[] | null>(null);
+  // In-memory Signal cache (survives component destroy within same session)
+  private topAnimeCache    = signal<Anime[] | null>(null);
   private seasonalAnimeCache = signal<Anime[] | null>(null);
 
-  /**
-   * Returns an operator that retries once after 1.5s on 429 errors.
-   * This protects every endpoint against transient rate-limit bursts.
-   */
-  private retryOn429<T>() {
-    return retryWhen<T>(errors =>
-      errors.pipe(
-        mergeMap((err, attempt) => {
-          // Only retry on 429, only once
-          if (attempt < 1 && err?.status === 429) {
-            console.warn(`⚠️ Jikan 429 — retrying in 1.5s (attempt ${attempt + 1})`);
-            return timer(1500);
-          }
-          return throwError(() => err);
-        }),
-        take(2)
-      )
-    );
+  // ─── LocalStorage helpers ─────────────────────────────────────────────────
+
+  private lsGet<T>(key: string): T | null {
+    if (!isPlatformBrowser(this.platformId)) return null;
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return null;
+      const { data, ts } = JSON.parse(raw);
+      if (Date.now() - ts < CACHE_TTL_MS) return data as T;
+    } catch {}
+    return null;
   }
 
+  private lsSet<T>(key: string, data: T): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    try {
+      localStorage.setItem(key, JSON.stringify({ data, ts: Date.now() }));
+    } catch {}
+  }
+
+  // ─── Retry operator ──────────────────────────────────────────────────────
+  // Retries once after 1.5s ONLY on 429 errors (rate limit).
+  // All other errors (503, network) pass through immediately.
+
+  private retryOn429<T>() {
+    return retry<T>({
+      count: 1,
+      delay: (err) => {
+        if (err?.status === 429) {
+          console.warn('⚠️ Jikan 429 — retrying in 1.5s');
+          return timer(1500);
+        }
+        return throwError(() => err); // don't retry 503, 500, network errors
+      }
+    });
+  }
+
+  // ─── API Methods ──────────────────────────────────────────────────────────
+
   /**
-   * Retrieves the top animes from the Jikan API. Caches the result in a Signal.
+   * Top anime — memory cache → localStorage cache → HTTP
    */
   getTopAnime(): Observable<Anime[]> {
-    const cached = this.topAnimeCache();
-    if (cached) return of(cached);
+    const mem = this.topAnimeCache();
+    if (mem) return of(mem);
+
+    const ls = this.lsGet<Anime[]>('otaku_top_anime');
+    if (ls) {
+      this.topAnimeCache.set(ls);
+      return of(ls);
+    }
 
     return this.http.get<AnimeResponse>(`${this.baseUrl}/top/anime`).pipe(
       this.retryOn429(),
       map(res => res.data || []),
-      tap(data => this.topAnimeCache.set(data)),
-      catchError(err => {
-        console.error('❌ Error loading top anime:', err);
-        return of([]);
+      tap(data => {
+        this.topAnimeCache.set(data);
+        this.lsSet('otaku_top_anime', data);
       })
+      // No catchError here — let it propagate to the component for error UI
     );
   }
 
   /**
-   * Retrieves seasonal anime. Caches the result in a Signal.
+   * Seasonal anime — memory cache → localStorage cache → HTTP
    */
   getSeasonalAnime(): Observable<Anime[]> {
-    const cached = this.seasonalAnimeCache();
-    if (cached) return of(cached);
+    const mem = this.seasonalAnimeCache();
+    if (mem) return of(mem);
+
+    const ls = this.lsGet<Anime[]>('otaku_seasonal_anime');
+    if (ls) {
+      this.seasonalAnimeCache.set(ls);
+      return of(ls);
+    }
 
     return this.http.get<AnimeResponse>(`${this.baseUrl}/seasons/now?limit=12`).pipe(
       this.retryOn429(),
       map(res => res.data || []),
-      tap(data => this.seasonalAnimeCache.set(data)),
-      catchError(err => {
-        console.error('❌ Error loading seasonal anime:', err);
-        return of([]);
+      tap(data => {
+        this.seasonalAnimeCache.set(data);
+        this.lsSet('otaku_seasonal_anime', data);
       })
     );
   }
 
   /**
-   * Retrieves detail info for a specific Anime by its ID.
+   * Anime detail by ID
    */
   getAnimeById(id: number): Observable<Anime> {
     return this.http.get<AnimeDetailResponse>(`${this.baseUrl}/anime/${id}`).pipe(
@@ -83,7 +117,7 @@ export class AnimeService {
   }
 
   /**
-   * Retrieves the character cast list for a specific Anime.
+   * Character cast for an Anime
    */
   getAnimeCharacters(id: number): Observable<Character[]> {
     return this.http.get<CharacterResponse>(`${this.baseUrl}/anime/${id}/characters`).pipe(
@@ -93,39 +127,42 @@ export class AnimeService {
   }
 
   /**
-   * Searches animes by keyword.
+   * Search anime by keyword
    */
   searchAnime(query: string): Observable<Anime[]> {
     return this.http.get<AnimeResponse>(`${this.baseUrl}/anime?q=${encodeURIComponent(query)}&limit=24`).pipe(
       this.retryOn429(),
-      map(res => res.data || []),
-      catchError(err => {
-        console.error('❌ Error searching anime:', err);
-        return of([]);
-      })
+      map(res => res.data || [])
     );
   }
 
   /**
-   * Obtiene una lista paginada de animes populares para el catálogo infinito.
-   * @param page Número de página a consultar
+   * Paginated top anime for infinite scroll — localStorage page cache
    */
   getPopularAnimePaged(page: number = 1): Observable<Anime[]> {
+    const lsKey = `otaku_catalog_p${page}`;
+    const ls = this.lsGet<Anime[]>(lsKey);
+    if (ls) return of(ls);
+
     return this.http.get<AnimeResponse>(`${this.baseUrl}/top/anime?page=${page}&limit=24`).pipe(
       this.retryOn429(),
       map(res => res.data || []),
-      catchError(err => {
-        console.error(`❌ Error loading catalog page ${page}:`, err);
-        return of([]);
-      })
+      tap(data => this.lsSet(lsKey, data))
     );
   }
 
   /**
-   * Clears the in-memory Signal cache.
+   * Clears all caches (in-memory + localStorage)
    */
   clearCache(): void {
     this.topAnimeCache.set(null);
     this.seasonalAnimeCache.set(null);
+    if (isPlatformBrowser(this.platformId)) {
+      try {
+        Object.keys(localStorage)
+          .filter(k => k.startsWith('otaku_'))
+          .forEach(k => localStorage.removeItem(k));
+      } catch {}
+    }
   }
 }

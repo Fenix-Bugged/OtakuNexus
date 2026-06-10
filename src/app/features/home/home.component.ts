@@ -1,14 +1,6 @@
 import { 
-  Component, 
-  OnInit, 
-  inject, 
-  signal, 
-  Output, 
-  EventEmitter, 
-  AfterViewInit, 
-  ElementRef, 
-  ViewChild, 
-  PLATFORM_ID 
+  Component, OnInit, inject, signal, Output, EventEmitter,
+  AfterViewInit, ElementRef, ViewChild, PLATFORM_ID 
 } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { of, concat, EMPTY } from 'rxjs';
@@ -32,25 +24,30 @@ export class HomeComponent implements OnInit, AfterViewInit {
   @Output() navigateTo = new EventEmitter<{ path: 'home' | 'search' | 'details' | 'favorites'; paramId?: number }>();
   @Output() favoriteToggled = new EventEmitter<Anime>();
 
-  // Data signals for all home sections
-  topAnime    = signal<Anime[]>([]);
+  // ── Data signals ───────────────────────────────────────────────────────────
+  topAnime      = signal<Anime[]>([]);
   seasonalAnime = signal<Anime[]>([]);
   catalogAnime  = signal<Anime[]>([]);
   currentPage   = signal<number>(1);
 
-  // Loading / fetching states
-  loadingTop        = signal(true);
-  loadingSeasonal   = signal(true);
+  // ── UI state signals ───────────────────────────────────────────────────────
+  loadingTop         = signal(true);
+  loadingSeasonal    = signal(true);
   isFetchingNextPage = signal(false);
+  apiError           = signal(false);   // true when Jikan is unreachable
 
-  // IntersectionObserver anchor (catalog section)
+  // ── Favorites ──────────────────────────────────────────────────────────────
+  favIds = signal<Set<number>>(new Set());
+
+  // ── Skeleton placeholders ──────────────────────────────────────────────────
+  skeletons = Array(12).fill(0);
+
+  // ── IntersectionObserver anchor ────────────────────────────────────────────
   @ViewChild('infiniteAnchor') infiniteAnchor!: ElementRef;
-
-  // Guard: prevents IntersectionObserver from firing before initial catalog load
-  private catalogInitialized = false;
+  private catalogReady = false;
   private observer: IntersectionObserver | null = null;
 
-  // Computed hero from topAnime list
+  // ── Computed hero (highest scored from topAnime list) ──────────────────────
   get heroAnime(): Anime | null {
     const list = this.topAnime();
     if (!list.length) return null;
@@ -59,80 +56,98 @@ export class HomeComponent implements OnInit, AfterViewInit {
     , list[0]);
   }
 
-  // Favorites tracking
-  favIds = signal<Set<number>>(new Set());
-
-  // Skeleton placeholder array
-  skeletons = Array(12).fill(0);
+  // ── Lifecycle ──────────────────────────────────────────────────────────────
 
   ngOnInit(): void {
-    // Skip ALL HTTP calls during SSR / prerender — only runs in browser
     if (!isPlatformBrowser(this.platformId)) {
       this.loadingTop.set(false);
       this.loadingSeasonal.set(false);
       return;
     }
+    this.loadAll();
+  }
 
-    /*
-     * SEQUENTIAL REQUEST CHAIN using RxJS concat + delay
-     * Jikan API allows max ~3 req/s. We fire them 450ms apart to stay safe.
-     *
-     * Order: getTopAnime → (450ms) → getSeasonalAnime → (450ms) → getPopularAnimePaged(1)
-     *
-     * concat() ensures each observable completes before the next one starts.
-     * of(null).pipe(delay(X)) acts as a 450ms pause between requests.
-     */
+  ngAfterViewInit(): void {
+    // Observer is attached from loadAll() after catalog loads — no-op here
+  }
+
+  // ── Core loading logic ─────────────────────────────────────────────────────
+
+  /**
+   * Sequential request chain — fires requests 450ms apart to respect Jikan's
+   * ~3 req/s rate limit. Uses RxJS concat so each request fully completes
+   * (including localStorage cache checks) before the next begins.
+   */
+  loadAll(): void {
+    this.apiError.set(false);
+
     concat(
-      // Step 1 — Top anime
+      // ── 1. Top anime (immediate) ──────────────────────────────────────────
       this.animeService.getTopAnime().pipe(
         tap(data => {
           this.topAnime.set(data);
           this.loadingTop.set(false);
         }),
-        catchError(() => { this.loadingTop.set(false); return EMPTY; })
+        catchError(err => {
+          console.error('Top anime error:', err);
+          this.loadingTop.set(false);
+          this.apiError.set(true);
+          return EMPTY;
+        })
       ),
 
-      // Step 2 — 450ms pause then seasonal
-      of(null).pipe(delay(450), switchMap(() =>
-        this.animeService.getSeasonalAnime().pipe(
-          tap(data => {
-            this.seasonalAnime.set(data);
-            this.loadingSeasonal.set(false);
-          }),
-          catchError(() => { this.loadingSeasonal.set(false); return EMPTY; })
+      // ── 2. Seasonal anime (after 450ms) ───────────────────────────────────
+      of(null).pipe(
+        delay(450),
+        switchMap(() =>
+          this.animeService.getSeasonalAnime().pipe(
+            tap(data => {
+              this.seasonalAnime.set(data);
+              this.loadingSeasonal.set(false);
+            }),
+            catchError(err => {
+              console.error('Seasonal anime error:', err);
+              this.loadingSeasonal.set(false);
+              return EMPTY;
+            })
+          )
         )
-      )),
+      ),
 
-      // Step 3 — 450ms pause then first catalog page
-      of(null).pipe(delay(450), switchMap(() =>
-        this.animeService.getPopularAnimePaged(1).pipe(
-          tap(data => {
-            if (data.length > 0) {
-              this.catalogAnime.set(data);
-              this.currentPage.set(2);
-            }
-            this.isFetchingNextPage.set(false);
-            // NOW it is safe to activate the IntersectionObserver
-            this.catalogInitialized = true;
-            this.attachObserver();
-          }),
-          catchError(() => { this.isFetchingNextPage.set(false); return EMPTY; })
+      // ── 3. Catalog page 1 (after another 450ms) ───────────────────────────
+      of(null).pipe(
+        delay(450),
+        switchMap(() =>
+          this.animeService.getPopularAnimePaged(1).pipe(
+            tap(data => {
+              if (data.length > 0) {
+                this.catalogAnime.set(data);
+                this.currentPage.set(2);
+              }
+              this.isFetchingNextPage.set(false);
+              // Activate IntersectionObserver only AFTER catalog data is ready
+              this.catalogReady = true;
+              this.attachObserver();
+            }),
+            catchError(err => {
+              console.error('Catalog page 1 error:', err);
+              this.isFetchingNextPage.set(false);
+              return EMPTY;
+            })
+          )
         )
-      ))
+      )
     ).subscribe();
   }
 
-  ngAfterViewInit(): void {
-    // Observer attachment is deferred until catalogInitialized = true
-    // (done inside the Step 3 tap above). This method is a no-op here.
-  }
+  // ── IntersectionObserver ───────────────────────────────────────────────────
 
-  /** Attaches the IntersectionObserver ONLY after catalog is initialized */
   private attachObserver(): void {
-    if (!isPlatformBrowser(this.platformId) || !this.infiniteAnchor) return;
+    if (!isPlatformBrowser(this.platformId) || !this.infiniteAnchor?.nativeElement) return;
+    if (this.observer) this.observer.disconnect(); // clean up previous observer
 
-    this.observer = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && !this.isFetchingNextPage() && this.catalogInitialized) {
+    this.observer = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && !this.isFetchingNextPage() && this.catalogReady) {
         this.loadMoreAnime();
       }
     }, { rootMargin: '200px' });
@@ -140,14 +155,14 @@ export class HomeComponent implements OnInit, AfterViewInit {
     this.observer.observe(this.infiniteAnchor.nativeElement);
   }
 
-  /** Loads the next page of the infinite catalog */
+  // ── Infinite scroll ────────────────────────────────────────────────────────
+
   loadMoreAnime(): void {
     if (!isPlatformBrowser(this.platformId) || this.isFetchingNextPage()) return;
-
     this.isFetchingNextPage.set(true);
 
     this.animeService.getPopularAnimePaged(this.currentPage()).subscribe({
-      next: (data) => {
+      next: data => {
         if (data.length > 0) {
           this.catalogAnime.set([...this.catalogAnime(), ...data]);
           this.currentPage.update(p => p + 1);
@@ -157,6 +172,21 @@ export class HomeComponent implements OnInit, AfterViewInit {
       error: () => this.isFetchingNextPage.set(false)
     });
   }
+
+  // ── Retry button ───────────────────────────────────────────────────────────
+
+  retryLoad(): void {
+    this.loadingTop.set(true);
+    this.loadingSeasonal.set(true);
+    this.topAnime.set([]);
+    this.seasonalAnime.set([]);
+    this.catalogAnime.set([]);
+    this.currentPage.set(1);
+    this.catalogReady = false;
+    this.loadAll();
+  }
+
+  // ── Card interactions ──────────────────────────────────────────────────────
 
   onCardClicked(id: number): void {
     this.navigateTo.emit({ path: 'details', paramId: id });

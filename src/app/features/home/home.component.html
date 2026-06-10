@@ -105,6 +105,33 @@
   </div>
 }
 
+<!-- ===== API ERROR BANNER ===== -->
+@if (apiError() && !topAnime().length) {
+  <div class="relative w-full rounded-2xl mb-12 overflow-hidden border border-orange-500/20 bg-gradient-to-r from-orange-500/5 via-red-500/5 to-purple-500/5 backdrop-blur-xl p-8 md:p-12 text-center">
+    <div class="absolute w-[300px] h-[300px] bg-orange-500/10 rounded-full blur-[100px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>
+    <div class="relative z-10">
+      <span class="text-5xl mb-4 block">⚡</span>
+      <h2 class="font-outfit font-bold text-white text-xl md:text-2xl mb-2">
+        La API de Jikan está temporalmente inaccesible
+      </h2>
+      <p class="text-white/60 text-sm md:text-base max-w-md mx-auto mb-6 font-inter">
+        El servidor de MyAnimeList (Jikan) está respondiendo con un error 503. Esto suele durar unos minutos. Puedes intentar de nuevo.
+      </p>
+      <button
+        (click)="retryLoad()"
+        class="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-sm font-outfit
+               bg-gradient-to-r from-orange-500 to-purple-600 text-white shadow-lg
+               hover:from-orange-600 hover:to-purple-700 hover:shadow-orange-500/20
+               transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0">
+        <svg xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 -960 960 960" width="18px" fill="currentColor">
+          <path d="M480-160q-134 0-227-93t-93-227q0-134 93-227t227-93q69 0 132 28.5T720-690v-110h80v280H520v-80h168q-32-56-87.5-88T480-720q-100 0-170 70t-70 170q0 100 70 170t170 70q77 0 139-44t87-116h84q-29 108-115.5 178T480-160Z"/>
+        </svg>
+        Reintentar conexión
+      </button>
+    </div>
+  </div>
+}
+
 <!-- ===== TENDENCIAS GLOBALES SECTION ===== -->
 <section class="mb-12">
   <div class="flex items-center justify-between mb-5">
