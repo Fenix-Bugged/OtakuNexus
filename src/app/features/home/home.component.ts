@@ -61,25 +61,30 @@ export class HomeComponent implements OnInit, AfterViewInit {
   skeletons = Array(12).fill(0);
 
   ngOnInit(): void {
-    // Load top anime and seasonal anime
-    this.animeService.getTopAnime().subscribe({
-      next: (data) => {
-        this.topAnime.set(data);
-        this.loadingTop.set(false);
-      },
-      error: () => this.loadingTop.set(false),
-    });
+    if (isPlatformBrowser(this.platformId)) {
+      // Load top anime and seasonal anime
+      this.animeService.getTopAnime().subscribe({
+        next: (data) => {
+          this.topAnime.set(data);
+          this.loadingTop.set(false);
+        },
+        error: () => this.loadingTop.set(false),
+      });
 
-    this.animeService.getSeasonalAnime().subscribe({
-      next: (data) => {
-        this.seasonalAnime.set(data);
-        this.loadingSeasonal.set(false);
-      },
-      error: () => this.loadingSeasonal.set(false),
-    });
+      this.animeService.getSeasonalAnime().subscribe({
+        next: (data) => {
+          this.seasonalAnime.set(data);
+          this.loadingSeasonal.set(false);
+        },
+        error: () => this.loadingSeasonal.set(false),
+      });
 
-    // Load initial page of infinite scroll catalogue
-    this.loadMoreAnime();
+      // Load initial page of infinite scroll catalogue
+      this.loadMoreAnime();
+    } else {
+      this.loadingTop.set(false);
+      this.loadingSeasonal.set(false);
+    }
   }
 
   ngAfterViewInit(): void {
@@ -105,6 +110,10 @@ export class HomeComponent implements OnInit, AfterViewInit {
   }
 
   loadMoreAnime(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
     this.isFetchingNextPage.set(true);
 
     this.animeService.getPopularAnimePaged(this.currentPage()).subscribe({

@@ -36,14 +36,16 @@ export class AppComponent implements OnInit {
     });
 
     // Basic connectivity check log
-    this.animeService.getTopAnime().subscribe({
-      next: (animes) => {
-        console.log('🔥 Anime en Tendencia (MAL Top):', animes);
-      },
-      error: (err) => {
-        console.error('❌ Error fetching top anime:', err);
-      }
-    });
+    if (isPlatformBrowser(this.platformId)) {
+      this.animeService.getTopAnime().subscribe({
+        next: (animes) => {
+          console.log('🔥 Anime en Tendencia (MAL Top):', animes);
+        },
+        error: (err) => {
+          console.error('❌ Error fetching top anime:', err);
+        }
+      });
+    }
   }
 
   /**

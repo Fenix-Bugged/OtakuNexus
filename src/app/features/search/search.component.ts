@@ -76,7 +76,7 @@ export class SearchComponent {
           this.searchSubscription.unsubscribe();
         }
       });
-    });
+    }, { allowSignalWrites: true });
   }
 
   /**
