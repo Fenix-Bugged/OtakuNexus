@@ -1,8 +1,7 @@
 import { Component, OnInit, inject, signal, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser, Location } from '@angular/common';
+import { isPlatformBrowser } from '@angular/common';
 import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs';
-import { AnimeService } from './core/services/anime.service';
 import { AppRoute } from './core/models/route.model';
 import { NavbarComponent } from './shared/components/navbar/navbar.component';
 import { NotFoundComponent } from './features/not-found/not-found.component';
@@ -18,9 +17,7 @@ import { SearchComponent } from './features/search/search.component';
 })
 export class AppComponent implements OnInit {
   title = 'OtakuNexus';
-  private animeService = inject(AnimeService);
   private platformId = inject(PLATFORM_ID);
-  private location = inject(Location);
   private router = inject(Router);
 
   // Virtual routing signals
@@ -34,18 +31,6 @@ export class AppComponent implements OnInit {
     ).subscribe((event) => {
       this.syncRouteFromUrl(event.urlAfterRedirects);
     });
-
-    // Basic connectivity check log
-    if (isPlatformBrowser(this.platformId)) {
-      this.animeService.getTopAnime().subscribe({
-        next: (animes) => {
-          console.log('🔥 Anime en Tendencia (MAL Top):', animes);
-        },
-        error: (err) => {
-          console.error('❌ Error fetching top anime:', err);
-        }
-      });
-    }
   }
 
   /**

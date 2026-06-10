@@ -1,7 +1,8 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { map, tap, catchError } from 'rxjs/operators';
+import { map, tap, catchError, delay, retry } from 'rxjs/operators';
+import { timer } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Anime, AnimeResponse, AnimeDetailResponse, Character, CharacterResponse } from '../models/anime.model';
 
@@ -27,7 +28,11 @@ export class AnimeService {
 
     return this.http.get<AnimeResponse>(`${this.baseUrl}/top/anime`).pipe(
       map(res => res.data || []),
-      tap(data => this.topAnimeCache.set(data))
+      tap(data => this.topAnimeCache.set(data)),
+      catchError(err => {
+        console.error('Error loading top anime:', err);
+        return of([]);
+      })
     );
   }
 
@@ -42,7 +47,11 @@ export class AnimeService {
 
     return this.http.get<AnimeResponse>(`${this.baseUrl}/seasons/now?limit=12`).pipe(
       map(res => res.data || []),
-      tap(data => this.seasonalAnimeCache.set(data))
+      tap(data => this.seasonalAnimeCache.set(data)),
+      catchError(err => {
+        console.error('Error loading seasonal anime:', err);
+        return of([]);
+      })
     );
   }
 

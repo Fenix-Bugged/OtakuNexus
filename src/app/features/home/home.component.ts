@@ -14,11 +14,12 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { AnimeService } from '../../core/services/anime.service';
 import { Anime } from '../../core/models/anime.model';
 import { AnimeCardComponent } from '../../shared/components/anime-card/anime-card.component';
+import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, AnimeCardComponent],
+  imports: [CommonModule, AnimeCardComponent, EmptyStateComponent],
   templateUrl: './home.component.html',
   styleUrl: './home.component.css'
 })
@@ -62,7 +63,7 @@ export class HomeComponent implements OnInit, AfterViewInit {
 
   ngOnInit(): void {
     if (isPlatformBrowser(this.platformId)) {
-      // Load top anime and seasonal anime
+      // REQUEST 1: Top anime fires immediately
       this.animeService.getTopAnime().subscribe({
         next: (data) => {
           this.topAnime.set(data);
@@ -71,16 +72,21 @@ export class HomeComponent implements OnInit, AfterViewInit {
         error: () => this.loadingTop.set(false),
       });
 
-      this.animeService.getSeasonalAnime().subscribe({
-        next: (data) => {
-          this.seasonalAnime.set(data);
-          this.loadingSeasonal.set(false);
-        },
-        error: () => this.loadingSeasonal.set(false),
-      });
+      // REQUEST 2: Seasonal fires 600ms later — Jikan allows ~3 req/s
+      setTimeout(() => {
+        this.animeService.getSeasonalAnime().subscribe({
+          next: (data) => {
+            this.seasonalAnime.set(data);
+            this.loadingSeasonal.set(false);
+          },
+          error: () => this.loadingSeasonal.set(false),
+        });
+      }, 600);
 
-      // Load initial page of infinite scroll catalogue
-      this.loadMoreAnime();
+      // REQUEST 3: Infinite catalog fires 1200ms later
+      setTimeout(() => {
+        this.loadMoreAnime();
+      }, 1200);
     } else {
       this.loadingTop.set(false);
       this.loadingSeasonal.set(false);
