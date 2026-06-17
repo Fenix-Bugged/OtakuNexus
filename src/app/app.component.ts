@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, PLATFORM_ID } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs';
@@ -7,11 +7,17 @@ import { NavbarComponent } from './shared/components/navbar/navbar.component';
 import { NotFoundComponent } from './features/not-found/not-found.component';
 import { HomeComponent } from './features/home/home.component';
 import { SearchComponent } from './features/search/search.component';
+import { DetailsComponent } from './features/details/details.component';
+import { FavoritesComponent } from './features/favorites/favorites.component';
+import { FavoritesService } from './core/services/favorites.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, NavbarComponent, NotFoundComponent, HomeComponent, SearchComponent],
+  imports: [
+    RouterOutlet, NavbarComponent, NotFoundComponent, HomeComponent,
+    SearchComponent, DetailsComponent, FavoritesComponent
+  ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })
@@ -19,10 +25,11 @@ export class AppComponent implements OnInit {
   title = 'OtakuNexus';
   private platformId = inject(PLATFORM_ID);
   private router = inject(Router);
+  private favoritesService = inject(FavoritesService);
 
   // Virtual routing signals
   currentRoute = signal<AppRoute>({ path: 'home' });
-  favoritesCount = signal<number>(0);
+  favoritesCount = computed(() => this.favoritesService.favorites().length);
 
   ngOnInit(): void {
     // Listen to router navigation events to synchronize the virtual router
@@ -94,10 +101,7 @@ export class AppComponent implements OnInit {
   /**
    * Handles favorite toggle from child screens and increments/decrements the badge counter.
    */
-  onFavoriteToggled(anime: { mal_id: number }): void {
-    // We delegate the actual tracking to each screen; this just syncs the navbar badge
-    // For now, toggle logic increments count (full state management comes in a future day)
-    const current = this.favoritesCount();
-    this.favoritesCount.set(current > 0 ? current - 1 : current + 1);
+  onFavoriteToggled(anime: any): void {
+    // No-op: FavoritesService gestiona el estado de forma reactiva en toda la app.
   }
 }

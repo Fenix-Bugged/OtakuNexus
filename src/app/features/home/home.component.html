@@ -152,7 +152,6 @@
         <div class="snap-start shrink-0 w-[155px] md:w-[175px]">
           <app-anime-card
             [anime]="anime"
-            [isFav]="isFav(anime.mal_id)"
             (cardClicked)="onCardClicked($event)"
             (favoriteToggled)="onFavoriteToggled($event)"
           />
@@ -193,7 +192,6 @@
         <div class="snap-start shrink-0 w-[155px] md:w-[175px]">
           <app-anime-card
             [anime]="anime"
-            [isFav]="isFav(anime.mal_id)"
             (cardClicked)="onCardClicked($event)"
             (favoriteToggled)="onFavoriteToggled($event)"
           />
@@ -212,31 +210,4 @@
       }
     </div>
   }
-</section>
-
-<!-- ===== CATÁLOGO INFINITO SECTION ===== -->
-<section class="catalog-section mt-12">
-  <h2 class="section-title font-outfit font-bold text-white text-xl md:text-2xl mb-5">
-    Explorar Catálogo de Anime ⛩️
-  </h2>
-
-  <!-- Reutilización del AnimeCardComponent con iterador del Control Flow -->
-  <div class="anime-grid grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
-    @for (anime of catalogAnime(); track anime.mal_id) {
-      <app-anime-card 
-        [anime]="anime"
-        [isFav]="isFav(anime.mal_id)"
-        (cardClicked)="onCardClicked($event)"
-        (favoriteToggled)="onFavoriteToggled($event)">
-      </app-anime-card>
-    }
-  </div>
-
-  <!-- El Ancla del Scroll Infinito: Cuando este elemento entra en pantalla, se cargan más animes automáticamente -->
-  <div #infiniteAnchor class="infinite-anchor-container">
-    @if (isFetchingNextPage()) {
-      <div class="infinite-spinner"></div>
-      <span class="loading-text">Invocando más animes... 🌸</span>
-    }
-  </div>
 </section>

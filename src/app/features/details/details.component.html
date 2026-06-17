@@ -1,0 +1,179 @@
+<div class="details-page-container fade-in">
+  <!-- Back navigation button -->
+  <button (click)="goBack()" class="back-btn group" aria-label="Volver al inicio">
+    <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor" class="arrow-icon">
+      <path d="m313-440 224 224-57 56-320-320 320-320 57 56-224 224h487v80H313Z"/>
+    </svg>
+    <span>Volver al Inicio</span>
+  </button>
+
+  @if (isLoading()) {
+    <!-- Skeleton loader screen -->
+    <div class="details-card skeleton-container flex flex-col lg:flex-row gap-12">
+      <!-- Left Column (Poster) Skeleton -->
+      <div class="w-full max-w-[320px] mx-auto lg:mx-0 flex-shrink-0">
+        <div class="skeleton-img-box aspect-[2/3] rounded-3xl shimmer"></div>
+      </div>
+      <!-- Right Column (Content) Skeleton -->
+      <div class="flex-1 flex flex-col gap-6">
+        <div class="skeleton-title shimmer"></div>
+        <div class="flex flex-wrap gap-2.5">
+          <div class="skeleton-badge shimmer"></div>
+          <div class="skeleton-badge shimmer"></div>
+          <div class="skeleton-badge shimmer"></div>
+          <div class="skeleton-badge shimmer"></div>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <div class="skeleton-genre shimmer"></div>
+          <div class="skeleton-genre shimmer"></div>
+          <div class="skeleton-genre shimmer"></div>
+        </div>
+        <div class="skeleton-divider"></div>
+        <div class="flex flex-col gap-3">
+          <div class="skeleton-label shimmer"></div>
+          <div class="skeleton-line shimmer"></div>
+          <div class="skeleton-line shimmer w-[90%]"></div>
+          <div class="skeleton-line shimmer w-[80%]"></div>
+        </div>
+        <div class="flex flex-col gap-4 mt-4">
+          <div class="skeleton-label shimmer"></div>
+          <div class="flex gap-6 overflow-hidden">
+            @for (skele of [1,2,3,4,5,6]; track $index) {
+              <div class="flex flex-col items-center min-w-[80px]">
+                <div class="skeleton-circle shimmer"></div>
+                <div class="skeleton-txt shimmer"></div>
+                <div class="skeleton-txt-sub shimmer"></div>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  } @else if (error()) {
+    <!-- Error view -->
+    <app-empty-state
+      icon="⚠️"
+      title="Error al cargar detalles"
+      message="Hubo un problema al obtener la información y el elenco de personajes del anime. Por favor, verifica tu conexión o inténtalo más tarde."
+      actionLabel="Volver al Inicio"
+      (actionClicked)="goBack()"
+    ></app-empty-state>
+  } @else if (selectedAnime()) {
+    <!-- Detailed View -->
+    <div class="details-card flex flex-col lg:flex-row gap-12 relative overflow-hidden">
+      <!-- Decorative background blur element inside the card -->
+      <div class="radial-blur-accent"></div>
+
+      <!-- Left Column: Poster Morphing -->
+      <div class="w-full lg:w-[320px] mx-auto lg:mx-0 flex-shrink-0 z-10">
+        <div class="poster-container aspect-[2/3]" [style.view-transition-name]="'anime-poster-' + selectedAnime()?.mal_id">
+          <img
+            [src]="selectedAnime()?.images?.jpg?.large_image_url || selectedAnime()?.images?.jpg?.image_url"
+            [alt]="selectedAnime()?.title"
+            class="poster-image"
+          />
+        </div>
+      </div>
+
+      <!-- Right Column: Info & Metadatos -->
+      <div class="flex-1 flex flex-col gap-6 text-left z-10">
+        <!-- Title -->
+        <h1 class="anime-title font-outfit">
+          {{ selectedAnime()?.title }}
+        </h1>
+
+        <!-- Badges & Ratings -->
+        <div class="flex flex-wrap gap-2.5 items-center">
+          @if (selectedAnime()?.score) {
+            <span class="badge-rating font-outfit" title="Calificación media">
+              <span class="star-icon">⭐</span>
+              <span>{{ selectedAnime()?.score?.toFixed(1) }}</span>
+            </span>
+          }
+          @if (selectedAnime()?.type) {
+            <span class="badge badge-type">
+              {{ selectedAnime()?.type }}
+            </span>
+          }
+          @if (selectedAnime()?.episodes) {
+            <span class="badge badge-episodes">
+              {{ selectedAnime()?.episodes }} Eps
+            </span>
+          }
+          @if (selectedAnime()?.year) {
+            <span class="badge badge-year">
+              {{ selectedAnime()?.year }}
+            </span>
+          }
+          @if (selectedAnime()?.status) {
+            <span class="badge badge-status" [class.status-airing]="selectedAnime()?.status === 'Currently Airing'">
+              {{ selectedAnime()?.status }}
+            </span>
+          }
+
+          <!-- Favorite Button inside details page -->
+          <button (click)="toggleFavorite()"
+                  class="fav-toggle-btn font-outfit"
+                  [class.is-fav]="isFavorite()"
+                  [attr.aria-label]="isFavorite() ? 'Quitar de favoritos' : 'Añadir a favoritos'">
+            <svg xmlns="http://www.w3.org/2000/svg" height="16px" viewBox="0 -960 960 960" width="16px" fill="currentColor" [class.animate-pulse-heart]="isFavorite()">
+              <path d="m480-120-58-52q-101-91-167-157T150-447.5Q111-500 95.5-544T80-634q0-94 63-157t157-63q52 0 99 22t81 62q34-40 81-62t99-22q94 0 157 63t63 157q0 46-15.5 90T810-447.5Q771-395 705-329T538-172l-58 52Z"/>
+            </svg>
+            <span>{{ isFavorite() ? 'En Favoritos' : 'Añadir a Favoritos' }}</span>
+          </button>
+        </div>
+
+        <!-- Genre Pills List -->
+        @if (selectedAnime()?.genres && selectedAnime()!.genres.length > 0) {
+          <div class="flex flex-wrap gap-2">
+            @for (genre of selectedAnime()?.genres; track genre.mal_id) {
+              <span class="genre-pill">
+                {{ genre.name }}
+              </span>
+            }
+          </div>
+        }
+
+        <!-- Divider line -->
+        <div class="details-divider"></div>
+
+        <!-- Synopsis -->
+        <div class="flex flex-col gap-2.5">
+          <h3 class="section-label font-outfit">Sinopsis</h3>
+          <p class="synopsis-text font-inter">
+            {{ selectedAnime()?.synopsis || 'No hay sinopsis disponible para este anime.' }}
+          </p>
+        </div>
+
+        <!-- Characters Cast Horizontal Track -->
+        @if (selectedAnimeCharacters().length > 0) {
+          <div class="flex flex-col gap-4 mt-2">
+            <h3 class="section-label font-outfit">Elenco de Personajes</h3>
+
+            <!-- Horizontal scrolling track wrapper -->
+            <div class="characters-track scrollbar-custom">
+              @for (cast of selectedAnimeCharacters(); track cast.character.mal_id) {
+                <div class="character-card group">
+                  <div class="character-avatar-wrapper">
+                    <img
+                      [src]="cast.character.images.jpg.image_url"
+                      [alt]="cast.character.name"
+                      class="character-avatar"
+                      loading="lazy"
+                    />
+                  </div>
+                  <span class="character-name" [title]="cast.character.name">
+                    {{ cast.character.name }}
+                  </span>
+                  <span class="character-role">
+                    {{ cast.role }}
+                  </span>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

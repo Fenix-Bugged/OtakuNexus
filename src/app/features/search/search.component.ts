@@ -2,6 +2,7 @@ import { Component, inject, signal, effect, Output, EventEmitter } from '@angula
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { AnimeService } from '../../core/services/anime.service';
+import { FavoritesService } from '../../core/services/favorites.service';
 import { Anime } from '../../core/models/anime.model';
 import { AppRoute } from '../../core/models/route.model';
 import { AnimeCardComponent } from '../../shared/components/anime-card/anime-card.component';
@@ -16,6 +17,7 @@ import { EmptyStateComponent } from '../../shared/components/empty-state/empty-s
 })
 export class SearchComponent {
   private animeService = inject(AnimeService);
+  private favoritesService = inject(FavoritesService);
 
   @Output() navigateTo = new EventEmitter<AppRoute>();
   @Output() favoriteToggled = new EventEmitter<Anime>();
@@ -24,7 +26,6 @@ export class SearchComponent {
   searchQuery = signal<string>('');
   isSearching = signal<boolean>(false);
   results = signal<Anime[]>([]);
-  favIds = signal<Set<number>>(new Set());
 
   // Store active subscription to unsubscribe and prevent race conditions
   private searchSubscription?: Subscription;
@@ -98,13 +99,7 @@ export class SearchComponent {
    * Toggles favorite status locally and emits the event.
    */
   onFavoriteToggled(anime: Anime): void {
-    const current = new Set(this.favIds());
-    if (current.has(anime.mal_id)) {
-      current.delete(anime.mal_id);
-    } else {
-      current.add(anime.mal_id);
-    }
-    this.favIds.set(current);
+    this.favoritesService.toggleFavorite(anime);
     this.favoriteToggled.emit(anime);
   }
 
@@ -112,7 +107,7 @@ export class SearchComponent {
    * Checks if an anime is marked as favorite.
    */
   isFav(id: number): boolean {
-    return this.favIds().has(id);
+    return this.favoritesService.isFavorite(id);
   }
 
   /**

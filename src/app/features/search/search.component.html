@@ -78,7 +78,6 @@
         @for (anime of results(); track anime.mal_id) {
           <app-anime-card
             [anime]="anime"
-            [isFav]="isFav(anime.mal_id)"
             (cardClicked)="onCardClicked($event)"
             (favoriteToggled)="onFavoriteToggled($event)"
           ></app-anime-card>

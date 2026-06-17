@@ -17,28 +17,15 @@
         (favoriteToggled)="onFavoriteToggled($event)">
       </app-search>
     } @else if (currentRoute().path === 'details') {
-      <section class="page-section fade-in">
-        <div class="back-nav" (click)="navigateTo('home')">
-          <span>← Volver al Inicio</span>
-        </div>
-        <div class="detail-container-placeholder">
-          <div class="detail-banner"></div>
-          <h1 class="page-title">Detalle del Anime (ID: {{ currentRoute().paramId }})</h1>
-          <p class="page-subtitle">Información detallada, episodios, géneros y elenco de personajes del anime.</p>
-        </div>
-      </section>
+      <app-details
+        [animeId]="currentRoute().paramId"
+        (navigateTo)="onNavigate($event)"
+        (favoriteToggled)="onFavoriteToggled($event)">
+      </app-details>
     } @else if (currentRoute().path === 'favorites') {
-      <section class="page-section fade-in">
-        <div class="page-header">
-          <h1 class="page-title">Mis <span class="gradient-text">Favoritos</span></h1>
-          <p class="page-subtitle">Los títulos que has marcado para ver más tarde.</p>
-        </div>
-        <div class="empty-favorites">
-          <span class="empty-icon">📂</span>
-          <p>No tienes animes agregados a tus favoritos todavía.</p>
-          <button class="primary-btn" (click)="navigateTo('home')">Explorar Series</button>
-        </div>
-      </section>
+      <app-favorites
+        (navigateTo)="onNavigate($event)">
+      </app-favorites>
     } @else {
       <!-- Fallback / Wildcard for any other non-existent virtual route -->
       <app-not-found (goHome)="navigateTo('home')"></app-not-found>
