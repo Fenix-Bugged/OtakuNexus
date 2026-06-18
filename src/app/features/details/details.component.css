@@ -413,3 +413,30 @@
     padding: 1.75rem;
   }
 }
+
+/* Comments deferred section */
+.comments-container {
+  max-width: 800px;
+  margin: 3rem auto 0;
+  padding: 0 1rem 3rem;
+}
+
+.comments-loading-placeholder {
+  text-align: center;
+  padding: 2.5rem;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  color: #475569;
+  font-size: 0.95rem;
+}
+
+.comments-loading-placeholder p {
+  margin: 0;
+}
+
+.comments-loading-spinner {
+  text-align: center;
+  padding: 2.5rem;
+  color: #64748b;
+  font-size: 0.9rem;
+}

@@ -175,5 +175,20 @@
         }
       </div>
     </div>
+
+    <!-- Sección de Comentarios con Carga Diferida -->
+    <section class="comments-container">
+      @defer (on viewport) {
+        <!-- Se carga automáticamente al entrar en el viewport -->
+        <app-anime-comments [animeId]="selectedAnime()!.mal_id"></app-anime-comments>
+      } @placeholder {
+        <!-- Contenido alternativo antes de hacer scroll -->
+        <div class="comments-loading-placeholder">
+          <p>Haz scroll hacia abajo para ver y dejar comentarios... 🏮💬</p>
+        </div>
+      } @loading {
+        <div class="comments-loading-spinner">Cargando sección de comentarios...</div>
+      }
+    </section>
   }
 </div>

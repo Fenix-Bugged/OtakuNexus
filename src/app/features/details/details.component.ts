@@ -6,11 +6,12 @@ import { FavoritesService } from '../../core/services/favorites.service';
 import { Anime, Character } from '../../core/models/anime.model';
 import { AppRoute } from '../../core/models/route.model';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
+import { AnimeComments } from './components/anime-comments/anime-comments';
 
 @Component({
   selector: 'app-details',
   standalone: true,
-  imports: [CommonModule, EmptyStateComponent],
+  imports: [CommonModule, EmptyStateComponent, AnimeComments],
   templateUrl: './details.component.html',
   styleUrl: './details.component.css'
 })
