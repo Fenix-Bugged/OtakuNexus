@@ -5,7 +5,7 @@
 </app-navbar>
 
 <main class="app-main-content">
-  <div class="route-container">
+  <div class="route-container" [class.route-exit]="routeTransitionState() === 'exit'" [class.route-enter]="routeTransitionState() === 'enter'">
     @if (currentRoute().path === 'home') {
       <app-home
         (navigateTo)="onNavigate($event)"

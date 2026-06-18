@@ -108,7 +108,6 @@ export class SearchComponent {
    * Toggles favorite status locally and emits the event.
    */
   onFavoriteToggled(anime: Anime): void {
-    this.favoritesService.toggleFavorite(anime);
     this.favoriteToggled.emit(anime);
   }
 

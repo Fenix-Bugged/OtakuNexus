@@ -119,7 +119,6 @@ export class HomeComponent implements OnInit {
   }
 
   onFavoriteToggled(anime: Anime): void {
-    this.favoritesService.toggleFavorite(anime);
     this.favoriteToggled.emit(anime);
   }
 

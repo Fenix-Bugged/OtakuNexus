@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed, PLATFORM_ID } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, PLATFORM_ID, NgZone } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs';
@@ -26,16 +26,21 @@ export class AppComponent implements OnInit {
   private platformId = inject(PLATFORM_ID);
   private router = inject(Router);
   private favoritesService = inject(FavoritesService);
+  private ngZone = inject(NgZone);
 
   // Virtual routing signals
   currentRoute = signal<AppRoute>({ path: 'home' });
   favoritesCount = computed(() => this.favoritesService.favorites().length);
 
+  // Controls CSS transition classes on the route container
+  routeTransitionState = signal<'idle' | 'exit' | 'enter'>('idle');
+
+  /** Prevents overlapping transitions */
+  private _transitioning = false;
+
   /**
    * Flag to distinguish programmatic navigation (from navigateTo()) from
    * real browser-initiated navigation (back/forward/direct URL).
-   * When true, the NavigationEnd handler is skipped to prevent the
-   * double-render that caused the perceived "double-click" requirement.
    */
   private _navigatingInternally = false;
 
@@ -47,7 +52,7 @@ export class AppComponent implements OnInit {
     ).subscribe((event) => {
       if (this._navigatingInternally) {
         this._navigatingInternally = false;
-        return; // signal was already set in navigateTo() — skip the double-set
+        return;
       }
       this.syncRouteFromUrl(event.urlAfterRedirects);
     });
@@ -77,36 +82,58 @@ export class AppComponent implements OnInit {
   }
 
   /**
-   * Updates the virtual route reactively and scrolls to top if in browser.
+   * Updates the virtual route with a smooth CSS transition (exit → swap → enter).
+   * Total minimum duration: ~1 second (500ms exit + 500ms enter).
    */
   navigateTo(path: AppRoute['path'], paramId?: number): void {
-    const changeState = () => {
-      // Update the signal directly for instant reaction
+    // Prevent overlapping transitions
+    if (this._transitioning) return;
+
+    if (!isPlatformBrowser(this.platformId)) {
+      // SSR: just swap immediately
       this.currentRoute.set({ path, paramId });
+      this._updateUrl(path, paramId);
+      return;
+    }
 
-      // Build the target URL
-      let targetUrl = `/${path}`;
-      if (path === 'home') {
-        targetUrl = '/';
-      } else if (path === 'details' && paramId !== undefined) {
-        targetUrl = `/details/${paramId}`;
-      }
+    this._transitioning = true;
 
-      // Mark as internal so NavigationEnd handler skips the redundant sync
-      if (path !== 'not-found') {
-        this._navigatingInternally = true;
-        this.router.navigateByUrl(targetUrl);
-      }
+    // Phase 1 — play exit animation (500ms)
+    this.routeTransitionState.set('exit');
 
-      if (isPlatformBrowser(this.platformId)) {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-    };
+    this.ngZone.runOutsideAngular(() => {
+      setTimeout(() => {
+        this.ngZone.run(() => {
+          // Phase 2 — swap content (Angular re-renders synchronously here)
+          this.currentRoute.set({ path, paramId });
+          this._updateUrl(path, paramId);
+          window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
 
-    if (isPlatformBrowser(this.platformId) && (document as any).startViewTransition) {
-      (document as any).startViewTransition(() => changeState());
-    } else {
-      changeState();
+          // Phase 3 — play enter animation (500ms)
+          this.routeTransitionState.set('enter');
+
+          this.ngZone.runOutsideAngular(() => {
+            setTimeout(() => {
+              this.ngZone.run(() => {
+                this.routeTransitionState.set('idle');
+                this._transitioning = false;
+              });
+            }, 520);
+          });
+        });
+      }, 500);
+    });
+  }
+
+  /** Syncs the Angular Router URL without triggering virtual-route re-sync. */
+  private _updateUrl(path: AppRoute['path'], paramId?: number): void {
+    let targetUrl = `/${path}`;
+    if (path === 'home') targetUrl = '/';
+    else if (path === 'details' && paramId !== undefined) targetUrl = `/details/${paramId}`;
+
+    if (path !== 'not-found') {
+      this._navigatingInternally = true;
+      this.router.navigateByUrl(targetUrl);
     }
   }
 
