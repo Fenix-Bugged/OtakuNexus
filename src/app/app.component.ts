@@ -67,27 +67,35 @@ export class AppComponent implements OnInit {
    * Updates the virtual route reactively and scrolls to top if in browser.
    */
   navigateTo(path: AppRoute['path'], paramId?: number): void {
-    // Update the signal directly for instant reaction
-    this.currentRoute.set({ path, paramId });
+    const changeState = () => {
+      // Update the signal directly for instant reaction
+      this.currentRoute.set({ path, paramId });
 
-    // Update URL path in browser address bar
-    let targetUrl = `/${path}`;
-    if (path === 'home') {
-      targetUrl = '/';
-    } else if (path === 'details' && paramId !== undefined) {
-      targetUrl = `/details/${paramId}`;
-    }
+      // Update URL path in browser address bar
+      let targetUrl = `/${path}`;
+      if (path === 'home') {
+        targetUrl = '/';
+      } else if (path === 'details' && paramId !== undefined) {
+        targetUrl = `/details/${paramId}`;
+      }
 
-    // Keep the wrong URL in the address bar if it's not-found (standard 404 behavior)
-    if (path !== 'not-found') {
-      this.router.navigateByUrl(targetUrl);
-    }
+      // Keep the wrong URL in the address bar if it's not-found (standard 404 behavior)
+      if (path !== 'not-found') {
+        this.router.navigateByUrl(targetUrl);
+      }
 
-    if (isPlatformBrowser(this.platformId)) {
-      window.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-      });
+      if (isPlatformBrowser(this.platformId)) {
+        window.scrollTo({
+          top: 0,
+          behavior: 'smooth'
+        });
+      }
+    };
+
+    if (isPlatformBrowser(this.platformId) && (document as any).startViewTransition) {
+      (document as any).startViewTransition(() => changeState());
+    } else {
+      changeState();
     }
   }
 

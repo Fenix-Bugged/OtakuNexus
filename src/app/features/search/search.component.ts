@@ -23,9 +23,10 @@ export class SearchComponent {
   @Output() favoriteToggled = new EventEmitter<Anime>();
 
   // State Signals
-  searchQuery = signal<string>('');
-  isSearching = signal<boolean>(false);
-  results = signal<Anime[]>([]);
+  searchQuery   = signal<string>('');
+  isSearching   = signal<boolean>(false);
+  results       = signal<Anime[]>([]);
+  searchError   = signal<string | null>(null);
 
   // Store active subscription to unsubscribe and prevent race conditions
   private searchSubscription?: Subscription;
@@ -41,6 +42,7 @@ export class SearchComponent {
       // Clear results immediately if the query is empty
       if (!query.trim()) {
         this.results.set([]);
+        this.searchError.set(null);
         this.isSearching.set(false);
         if (this.searchSubscription) {
           this.searchSubscription.unsubscribe();
@@ -51,6 +53,7 @@ export class SearchComponent {
       // Configure a 400ms setTimeout before calling the search method
       const timeoutId = setTimeout(() => {
         this.isSearching.set(true);
+        this.searchError.set(null);
 
         // Cancel previous pending HTTP request to avoid race conditions
         if (this.searchSubscription) {
@@ -64,6 +67,12 @@ export class SearchComponent {
           },
           error: (err) => {
             console.error('❌ Error searching anime:', err);
+            const is504 = err?.status === 504 || err?.name === 'TimeoutError';
+            this.searchError.set(
+              is504
+                ? 'El servidor tardó demasiado en responder. Inténtalo de nuevo.'
+                : 'No se pudo conectar con la API. Verifica tu conexión e inténtalo de nuevo.'
+            );
             this.results.set([]);
             this.isSearching.set(false);
           }
@@ -115,5 +124,16 @@ export class SearchComponent {
    */
   clearSearch(): void {
     this.searchQuery.set('');
+    this.searchError.set(null);
+  }
+
+  /**
+   * Retries the current search (triggered from error state UI).
+   */
+  retrySearch(): void {
+    const q = this.searchQuery();
+    // Force re-trigger the effect by blanking and re-setting the query
+    this.searchQuery.set('');
+    setTimeout(() => this.searchQuery.set(q), 0);
   }
 }

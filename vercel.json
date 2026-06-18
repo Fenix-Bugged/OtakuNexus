@@ -1,0 +1,19 @@
+{
+  "headers": [
+    {
+      "source": "/(ngsw-worker.js|ngsw.json)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
