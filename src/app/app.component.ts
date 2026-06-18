@@ -31,11 +31,24 @@ export class AppComponent implements OnInit {
   currentRoute = signal<AppRoute>({ path: 'home' });
   favoritesCount = computed(() => this.favoritesService.favorites().length);
 
+  /**
+   * Flag to distinguish programmatic navigation (from navigateTo()) from
+   * real browser-initiated navigation (back/forward/direct URL).
+   * When true, the NavigationEnd handler is skipped to prevent the
+   * double-render that caused the perceived "double-click" requirement.
+   */
+  private _navigatingInternally = false;
+
   ngOnInit(): void {
-    // Listen to router navigation events to synchronize the virtual router
+    // Sync virtual route ONLY on real browser-initiated navigation events
+    // (back/forward button, direct URL entry) — NOT on our own navigateByUrl calls.
     this.router.events.pipe(
       filter((event): event is NavigationEnd => event instanceof NavigationEnd)
     ).subscribe((event) => {
+      if (this._navigatingInternally) {
+        this._navigatingInternally = false;
+        return; // signal was already set in navigateTo() — skip the double-set
+      }
       this.syncRouteFromUrl(event.urlAfterRedirects);
     });
   }
@@ -71,7 +84,7 @@ export class AppComponent implements OnInit {
       // Update the signal directly for instant reaction
       this.currentRoute.set({ path, paramId });
 
-      // Update URL path in browser address bar
+      // Build the target URL
       let targetUrl = `/${path}`;
       if (path === 'home') {
         targetUrl = '/';
@@ -79,16 +92,14 @@ export class AppComponent implements OnInit {
         targetUrl = `/details/${paramId}`;
       }
 
-      // Keep the wrong URL in the address bar if it's not-found (standard 404 behavior)
+      // Mark as internal so NavigationEnd handler skips the redundant sync
       if (path !== 'not-found') {
+        this._navigatingInternally = true;
         this.router.navigateByUrl(targetUrl);
       }
 
       if (isPlatformBrowser(this.platformId)) {
-        window.scrollTo({
-          top: 0,
-          behavior: 'smooth'
-        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     };
 

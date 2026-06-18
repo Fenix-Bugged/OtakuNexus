@@ -46,33 +46,59 @@ html, body {
   outline-offset: 2px;
 }
 
-/* Premium View Transitions */
+/* =====================================================
+   View Transitions — Premium Otaku slide-fade effect
+   ===================================================== */
+
+/* Salida: la página actual se desliza hacia abajo y desaparece */
 ::view-transition-old(root) {
-  animation: 350ms cubic-bezier(0.16, 1, 0.3, 1) both fade-out,
-             350ms cubic-bezier(0.16, 1, 0.3, 1) both scale-down;
+  animation: 420ms cubic-bezier(0.4, 0, 0.2, 1) both vt-slide-out;
 }
 
+/* Entrada: la nueva página sube desde abajo con un fade vibrante */
 ::view-transition-new(root) {
-  animation: 350ms cubic-bezier(0.16, 1, 0.3, 1) both fade-in,
-             350ms cubic-bezier(0.16, 1, 0.3, 1) both scale-up;
+  animation: 480ms cubic-bezier(0.16, 1, 0.3, 1) both vt-slide-in;
 }
 
-@keyframes fade-out {
-  from { opacity: 1; }
-  to { opacity: 0; }
+@keyframes vt-slide-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: brightness(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(30px) scale(0.97);
+    filter: brightness(0.6);
+  }
 }
 
-@keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+@keyframes vt-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-28px) scale(0.98);
+    filter: brightness(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: brightness(1);
+  }
 }
 
-@keyframes scale-down {
-  from { transform: scale(1); }
-  to { transform: scale(0.96); }
+/* Poster morph transition — keeps the anime poster connected across routes */
+::view-transition-old(anime-poster) {
+  animation: 400ms cubic-bezier(0.4, 0, 0.2, 1) both vt-poster-out;
+}
+::view-transition-new(anime-poster) {
+  animation: 500ms cubic-bezier(0.16, 1, 0.3, 1) both vt-poster-in;
 }
 
-@keyframes scale-up {
-  from { transform: scale(1.04); }
-  to { transform: scale(1); }
+@keyframes vt-poster-out {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(1.08); }
+}
+@keyframes vt-poster-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
 }
